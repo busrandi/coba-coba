@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kling Studio — Motion Control & Video Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+
+        /* Accent vars */
+        :root { --acc: #f5b731; --acc2: #e5a320; --bg: #0c0c0c; --card: #141414; --card2: #1a1a1a; --border: #222; --border2: #2a2a2a; --muted: #666; --muted2: #444; }
+
+        /* Cards */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; }
+
+        /* Upload */
+        .upload-zone { transition: all 0.2s; border: 2px dashed var(--border2); border-radius: 12px; cursor: pointer; }
+        .upload-zone:hover { border-color: var(--acc); background: rgba(245,183,49,0.03); }
+        .upload-zone.dragover { border-color: var(--acc); background: rgba(245,183,49,0.06); }
+
+        /* Tabs */
+        .mode-tab { padding: 10px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; color: var(--muted); background: transparent; }
+        .mode-tab:hover { color: #aaa; background: var(--card2); }
+        .mode-tab.active { background: var(--acc); color: #000; border-color: var(--acc); }
+
+        /* Inputs */
+        .inp { background: #0e0e0e; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: #fff; font-size: 13px; outline: none; width: 100%; transition: border-color 0.2s; }
+        .inp:focus { border-color: var(--acc); }
+        .inp::placeholder { color: #3a3a3a; }
+        select.inp { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+        /* Range */
+        input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: var(--border2); outline: none; width: 100%; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--acc); cursor: pointer; border: 2px solid var(--card); }
+        input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--acc); cursor: pointer; border: 2px solid var(--card); }
+
+        /* Buttons */
+        .btn { font-weight: 600; border-radius: 10px; padding: 12px 24px; font-size: 13px; transition: all 0.15s; border: none; cursor: pointer; }
+        .btn-acc { background: var(--acc); color: #000; }
+        .btn-acc:hover { background: var(--acc2); }
+        .btn-acc:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-ghost { background: var(--card2); color: #999; border: 1px solid var(--border); }
+        .btn-ghost:hover { background: #222; color: #fff; }
+
+        /* Sub tabs */
+        .stab { padding: 5px 11px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; color: #555; background: transparent; border: none; }
+        .stab.on { background: var(--card2); color: var(--acc); }
+        .stab:hover { color: #aaa; }
+
+        /* Provider badge */
+        .prov-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+        .prov-grok { background: #1a1510; color: #f5b731; }
+        .prov-freepik { background: #0c1f14; color: #4ade80; }
+        .prov-magnific { background: #16102a; color: #a78bfa; }
+        .prov-kie { background: #1a1520; color: #f472b6; }
+
+        /* Error card */
+        .err-card { background: #1a1212; border: 1px solid #3a1515; border-radius: 14px; }
+
+        /* Anim */
+        .pulse { animation: p 2s infinite; } @keyframes p { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
+        .bar-move { animation: bm 1.8s infinite linear; } @keyframes bm { 0%{ transform:translateX(-100%); } 100%{ transform:translateX(250%); } }
+        .fade { animation: fd 0.3s ease; } @keyframes fd { from{ opacity:0; transform:translateY(5px); } to{ opacity:1; transform:translateY(0); } }
+
+        /* Toast */
+        #toastEl { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100; display: none; }
+        .toast-box { background: #1a1a1a; border: 1px solid var(--border); padding: 10px 20px; border-radius: 10px; font-size: 13px; color: #e4e4e7; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-[#0c0c0c] text-white min-h-screen">
+
+<!-- ═══ NAV ═══ -->
+<nav class="border-b border-[#222] sticky top-0 z-50 bg-[#0c0c0c]/90 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-[#f5b731] rounded-lg flex items-center justify-center">
+                <svg width="16" height="16" fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </div>
+            <span class="font-bold text-sm">Kling Studio</span>
+            <span class="text-[9px] text-[#555] ml-0.5 font-medium">MULTI</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="https://docs.freepik.com/api-reference/video/kling-v3-motion-control/generate-std" target="_blank" class="btn btn-ghost text-[11px] py-1.5 px-3">Docs</a>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-5 py-6">
+
+<!-- ═══ MODE TABS ═══ -->
+<div class="flex gap-2 mb-5">
+    <button onclick="switchMode('motion')" id="tabMotion" class="mode-tab active">🎭 Motion Control</button>
+    <button onclick="switchMode('video')" id="tabVideo" class="mode-tab">🎬 Generate Video</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MOTION CONTROL MODE                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="panelMotion">
+    <!-- Provider -->
+    <div class="card p-4 mb-4 fade">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div class="flex items-center gap-2">
+                <svg width="13" height="13" fill="none" stroke="#f5b731" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                <span class="text-[11px] font-semibold text-[#888]">PROVIDER — MOTION CONTROL</span>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:ml-auto">
+                <select id="mcProvider" class="inp text-xs" style="min-width:160px" onchange="onProvChange('mc')">
+                    <option value="freepik">Freepik</option>
+                    <option value="magnific">Magnific</option>
+                    <option value="kie">Kie.ai</option>
+                </select>
+            </div>
+        </div>
+        <div id="mcProvBadge" class="mt-2"></div>
+        <p class="text-[10px] text-[#444] mt-1">API key dikonfigurasi di server (Vercel ENV)</p>
+    </div>
+
+    <!-- Upload Grid -->
+    <div class="grid lg:grid-cols-2 gap-4 mb-4">
+        <!-- Image -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-semibold text-[#888]">Gambar Karakter</span>
+                <div class="flex gap-0.5">
+                    <button onclick="subTab('mc_img','upload')" id="mc_img_upload" class="stab on">Upload</button>
+                    <button onclick="subTab('mc_img','url')" id="mc_img_url" class="stab">URL</button>
+                </div>
+            </div>
+            <div id="mc_img_uploadArea">
+                <div id="mc_imgDrop" onclick="$('mc_imgInput').click()" class="upload-zone h-52 flex flex-col items-center justify-center relative overflow-hidden">
+                    <input type="file" id="mc_imgInput" accept="image/*" class="hidden" onchange="onFile('mc_img',event)">
+                    <div id="mc_imgPH" class="text-center">
+                        <div class="w-11 h-11 mx-auto mb-2 bg-[#1a1a1a] rounded-lg flex items-center justify-center">
+                            <svg width="18" height="18" fill="none" stroke="#444" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        </div>
+                        <p class="text-xs text-[#555]">Klik atau drop gambar</p>
+                        <p class="text-[10px] text-[#333] mt-1">JPG, PNG, WEBP · Min 300×300 · Maks 10MB</p>
+                    </div>
+                    <img id="mc_imgPrev" class="hidden absolute inset-0 w-full h-full object-contain bg-black/40 p-2 rounded-xl">
+                </div>
+                <button onclick="clrFile('mc_img')" id="mc_imgClr" class="hidden text-[10px] text-[#555] hover:text-red-400 mt-1.5">Hapus</button>
+            </div>
+            <div id="mc_img_urlArea" class="hidden">
+                <input id="mc_imgUrl" type="url" placeholder="https://..." class="inp">
+                <p class="text-[10px] text-[#333] mt-1">URL gambar publik</p>
+            </div>
+        </div>
+        <!-- Video -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-semibold text-[#888]">Video Referensi</span>
+                <div class="flex gap-0.5">
+                    <button onclick="subTab('mc_vid','upload')" id="mc_vid_upload" class="stab on">Upload</button>
+                    <button onclick="subTab('mc_vid','url')" id="mc_vid_url" class="stab">URL</button>
+                </div>
+            </div>
+            <div id="mc_vid_uploadArea">
+                <div id="mc_vidDrop" onclick="$('mc_vidInput').click()" class="upload-zone h-52 flex flex-col items-center justify-center relative overflow-hidden">
+                    <input type="file" id="mc_vidInput" accept="video/*" class="hidden" onchange="onFile('mc_vid',event)">
+                    <div id="mc_vidPH" class="text-center">
+                        <div class="w-11 h-11 mx-auto mb-2 bg-[#1a1a1a] rounded-lg flex items-center justify-center">
+                            <svg width="18" height="18" fill="none" stroke="#444" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                        </div>
+                        <p class="text-xs text-[#555]">Klik atau drop video</p>
+                        <p class="text-[10px] text-[#333] mt-1">MP4, MOV, WEBM · 3–30 detik</p>
+                    </div>
+                    <video id="mc_vidPrev" class="hidden absolute inset-0 w-full h-full object-contain bg-black/40 p-2 rounded-xl" muted loop></video>
+                </div>
+                <button onclick="clrFile('mc_vid')" id="mc_vidClr" class="hidden text-[10px] text-[#555] hover:text-red-400 mt-1.5">Hapus</button>
+            </div>
+            <div id="mc_vid_urlArea" class="hidden">
+                <input id="mc_vidUrl" type="url" placeholder="https://..." class="inp">
+                <p class="text-[10px] text-[#333] mt-1">URL video publik · 3–30 detik</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card p-4 mb-4">
+        <span class="text-[11px] font-semibold text-[#555] block mb-3">PENGATURAN</span>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Orientasi</label>
+                <select id="mc_orient" class="inp">
+                    <option value="video">Video — Ikuti video</option>
+                    <option value="image">Image — Ikuti gambar</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Kualitas</label>
+                <select id="mc_qual" class="inp">
+                    <option value="std">Standard</option>
+                    <option value="pro">Pro</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">CFG: <span id="mc_cfgV" class="text-[#f5b731]">0.5</span></label>
+                <input type="range" id="mc_cfg" min="0" max="1" step="0.05" value="0.5" class="mt-2" oninput="$('mc_cfgV').textContent=this.value">
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Prompt <span class="text-[#333]">(opsional)</span></label>
+                <textarea id="mc_prompt" rows="2" maxlength="2500" class="inp resize-none" placeholder="Deskripsi gerakan..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- GENERATE VIDEO MODE                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="panelVideo" class="hidden">
+    <!-- Provider -->
+    <div class="card p-4 mb-4 fade">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div class="flex items-center gap-2">
+                <svg width="13" height="13" fill="none" stroke="#f5b731" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                <span class="text-[11px] font-semibold text-[#888]">PROVIDER — VIDEO GENERATE</span>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:ml-auto">
+                <select id="vgProvider" class="inp text-xs" style="min-width:160px" onchange="onProvChange('vg')">
+                    <option value="grok">Grok (xAI)</option>
+                    <option value="freepik">Freepik</option>
+                    <option value="magnific">Magnific</option>
+                </select>
+            </div>
+        </div>
+        <div id="vgProvBadge" class="mt-2"></div>
+        <p class="text-[10px] text-[#444] mt-1">API key dikonfigurasi di server (Vercel ENV)</p>
+    </div>
+
+    <!-- Sub-mode -->
+    <div class="flex gap-2 mb-4">
+        <button onclick="vidSub('t2v')" id="vs_t2v" class="mode-tab active text-xs py-2 px-4">Text to Video</button>
+        <button onclick="vidSub('i2v')" id="vs_i2v" class="mode-tab text-xs py-2 px-4">Image to Video</button>
+    </div>
+
+    <!-- Prompt -->
+    <div class="card p-4 mb-4">
+        <span class="text-xs font-semibold text-[#888] block mb-2">Prompt</span>
+        <textarea id="vg_prompt" rows="3" maxlength="2500" class="inp resize-none" placeholder="Deskripsikan video yang ingin dibuat..."></textarea>
+        <div class="mt-2">
+            <label class="text-[10px] text-[#555] block mb-1">Negative Prompt <span class="text-[#333]">(opsional)</span></label>
+            <input id="vg_neg" class="inp" placeholder="blur, distort, low quality" value="blur, distort, and low quality">
+        </div>
+    </div>
+
+    <!-- I2V images -->
+    <div id="i2vBox" class="hidden">
+        <div class="grid lg:grid-cols-2 gap-4 mb-4">
+            <div class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-[#888]">Start Image</span>
+                    <div class="flex gap-0.5">
+                        <button onclick="subTab('vg_si','upload')" id="vg_si_upload" class="stab on">Upload</button>
+                        <button onclick="subTab('vg_si','url')" id="vg_si_url" class="stab">URL</button>
+                    </div>
+                </div>
+                <div id="vg_si_uploadArea">
+                    <div id="vg_siDrop" onclick="$('vg_siInput').click()" class="upload-zone h-40 flex flex-col items-center justify-center relative overflow-hidden">
+                        <input type="file" id="vg_siInput" accept="image/*" class="hidden" onchange="onFile('vg_si',event)">
+                        <div id="vg_siPH" class="text-center">
+                            <div class="w-9 h-9 mx-auto mb-1.5 bg-[#1a1a1a] rounded-lg flex items-center justify-center">
+                                <svg width="14" height="14" fill="none" stroke="#444" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                            </div>
+                            <p class="text-[11px] text-[#555]">Start frame</p>
+                        </div>
+                        <img id="vg_siPrev" class="hidden absolute inset-0 w-full h-full object-contain bg-black/40 p-2 rounded-xl">
+                    </div>
+                    <button onclick="clrFile('vg_si')" id="vg_siClr" class="hidden text-[10px] text-[#555] hover:text-red-400 mt-1.5">Hapus</button>
+                </div>
+                <div id="vg_si_urlArea" class="hidden">
+                    <input id="vg_siUrl" type="url" placeholder="https://..." class="inp">
+                </div>
+            </div>
+            <div class="card p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-[#888]">End Image <span class="text-[#333]">(opsional)</span></span>
+                    <div class="flex gap-0.5">
+                        <button onclick="subTab('vg_ei','upload')" id="vg_ei_upload" class="stab on">Upload</button>
+                        <button onclick="subTab('vg_ei','url')" id="vg_ei_url" class="stab">URL</button>
+                    </div>
+                </div>
+                <div id="vg_ei_uploadArea">
+                    <div id="vg_eiDrop" onclick="$('vg_eiInput').click()" class="upload-zone h-40 flex flex-col items-center justify-center relative overflow-hidden">
+                        <input type="file" id="vg_eiInput" accept="image/*" class="hidden" onchange="onFile('vg_ei',event)">
+                        <div id="vg_eiPH" class="text-center">
+                            <div class="w-9 h-9 mx-auto mb-1.5 bg-[#1a1a1a] rounded-lg flex items-center justify-center">
+                                <svg width="14" height="14" fill="none" stroke="#444" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                            </div>
+                            <p class="text-[11px] text-[#555]">End frame</p>
+                        </div>
+                        <img id="vg_eiPrev" class="hidden absolute inset-0 w-full h-full object-contain bg-black/40 p-2 rounded-xl">
+                    </div>
+                    <button onclick="clrFile('vg_ei')" id="vg_eiClr" class="hidden text-[10px] text-[#555] hover:text-red-400 mt-1.5">Hapus</button>
+                </div>
+                <div id="vg_ei_urlArea" class="hidden">
+                    <input id="vg_eiUrl" type="url" placeholder="https://..." class="inp">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card p-4 mb-4">
+        <span class="text-[11px] font-semibold text-[#555] block mb-3">PENGATURAN</span>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Aspek Rasio</label>
+                <select id="vg_ar" class="inp">
+                    <option value="16:9">16:9 Landscape</option>
+                    <option value="9:16">9:16 Portrait</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="4:3">4:3</option>
+                    <option value="3:4">3:4</option>
+                    <option value="3:2">3:2</option>
+                    <option value="2:3">2:3</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Durasi</label>
+                <select id="vg_dur" class="inp">
+                    <option value="5">5 detik</option>
+                    <option value="8" selected>8 detik</option>
+                    <option value="10">10 detik</option>
+                    <option value="15">15 detik</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Resolusi</label>
+                <select id="vg_res" class="inp">
+                    <option value="720p" selected>720p</option>
+                    <option value="480p">480p</option>
+                    <option value="1080p">1080p</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-[#555] block mb-1">Kualitas</label>
+                <select id="vg_qual" class="inp">
+                    <option value="std">Standard</option>
+                    <option value="pro">Pro</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ GENERATE BTN ═══ -->
+<div class="flex gap-2 mb-5">
+    <button onclick="generate()" id="genBtn" class="btn btn-acc flex-1 flex items-center justify-center gap-2">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21"/></svg>
+        <span id="genTxt">Generate</span>
+    </button>
+    <button onclick="cancel()" id="cancelBtn" class="hidden btn btn-ghost border-red-500/20 text-red-400 hover:bg-red-500/10">Batal</button>
+</div>
+
+<!-- Upload progress -->
+<div id="upProg" class="hidden card p-4 mb-4 fade">
+    <div class="flex items-center gap-2 mb-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 pulse"></span>
+        <span class="text-xs text-[#777]" id="upTxt">Mengupload...</span>
+    </div>
+    <div class="w-full h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+        <div id="upBar" class="h-full bg-[#f5b731] rounded-full transition-all duration-300" style="width:0%"></div>
+    </div>
+</div>
+
+<!-- Error card -->
+<div id="errCard" class="hidden err-card p-4 mb-4 fade">
+    <div class="flex items-start gap-3">
+        <div class="w-6 h-6 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg width="14" height="14" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div>
+            <p class="text-sm font-semibold text-red-400" id="errTitle">Error</p>
+            <p class="text-xs text-[#888] mt-1" id="errMsg"></p>
+        </div>
+        <button onclick="hideErr()" class="ml-auto text-[#555] hover:text-red-400 text-xs flex-shrink-0">✕</button>
+    </div>
+</div>
+
+<!-- Status -->
+<div id="statCard" class="hidden card p-4 mb-4 fade">
+    <div class="flex items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full bg-[#f5b731] pulse"></span>
+        <span class="text-sm font-semibold" id="statTxt">Memproses...</span>
+    </div>
+    <div class="w-full h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+        <div class="h-full w-1/3 bg-[#f5b731] rounded-full bar-move"></div>
+    </div>
+    <p class="text-[10px] text-[#444] mt-2" id="statDet">—</p>
+</div>
+
+<!-- Result -->
+<div id="resCard" class="hidden card p-5 mb-6 fade">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            <span class="text-sm font-bold">Video Selesai</span>
+        </div>
+        <div class="flex gap-2">
+            <a id="dlBtn" href="#" download="video.mp4" class="btn btn-acc py-2 px-4 text-xs flex items-center gap-1.5">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+            </a>
+            <button onclick="window.open($('resVid').src,'_blank')" class="btn btn-ghost py-2 px-3 text-xs">Tab Baru</button>
+        </div>
+    </div>
+    <video id="resVid" controls autoplay loop class="w-full rounded-xl bg-black max-h-[480px]"></video>
+</div>
+
+<!-- History -->
+<div id="histSec" class="hidden mb-8">
+    <div class="flex items-center justify-between mb-3">
+        <span class="text-[11px] font-semibold text-[#555]">RIWAYAT</span>
+        <button onclick="clrHist()" class="text-[10px] text-[#444] hover:text-red-400">Hapus Semua</button>
+    </div>
+    <div id="histList" class="space-y-2"></div>
+</div>
+
+</main>
+
+<footer class="border-t border-[#222] py-5">
+    <div class="max-w-6xl mx-auto px-5 flex items-center justify-between text-[10px] text-[#444]">
+        <span>Kling Studio · Multi-Provider</span>
+        <span>File hosting via <a href="https://catbox.moe" target="_blank" class="hover:text-[#666]">Catbox</a></span>
+    </div>
+</footer>
+
+<div id="toastEl"><div class="toast-box fade"></div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════════════════════
+// PROVIDERS CONFIG (display only — keys are server-side)
+// ═══════════════════════════════════════════════════════════════════
+const PROV = {
+    freepik:  { base:'https://api.freepik.com',  badge:'prov-freepik',  label:'Freepik' },
+    magnific: { base:'https://api.magnific.com', badge:'prov-magnific', label:'Magnific' },
+    kie:      { base:'https://api.kie.ai',       badge:'prov-kie',      label:'Kie.ai' },
+    grok:     { base:'https://api.x.ai',         badge:'prov-grok',     label:'Grok (xAI)' },
+};
+
+const CATBOX = 'https://catbox.moe/user/api.php';
+const LITTER = 'https://litterbox.catbox.moe/resources/internals/api.php';
+const CORS_FN = [
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://proxy.cors.sh/${u}`,
+];
+
+let S = { mode:'motion', vsub:'t2v', files:{}, jobId:null, poll:null, cx:false, hist:JSON.parse(localStorage.getItem('ks3_h')||'[]') };
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Restore providers
+    ['mc','vg'].forEach(m => {
+        const p = localStorage.getItem(`ks3_${m}_prov`);
+        if (p) $(`${m}Provider`).value = p;
+        onProvChange(m);
+    });
+    renderHist();
+    // Drag-drop
+    ['mc_img','mc_vid','vg_si','vg_ei'].forEach(id => {
+        const drop = $(id+'Drop'), inp = $(id+'Input');
+        if (!drop) return;
+        ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('dragover')}));
+        ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('dragover')}));
+        drop.addEventListener('drop',ev=>{const f=ev.dataTransfer.files[0];if(!f)return;const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;onFile(id,{target:inp})});
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// PROVIDERS
+// ═══════════════════════════════════════════════════════════════════
+function onProvChange(m) {
+    const p = $(`${m}Provider`).value;
+    localStorage.setItem(`ks3_${m}_prov`, p);
+    const info = PROV[p];
+    $(`${m}ProvBadge`).innerHTML = `<span class="prov-badge ${info.badge}">${info.label} — ${info.base}</span>`;
+}
+function getProv(m) { return $(`${m}Provider`).value; }
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE SWITCH
+// ═══════════════════════════════════════════════════════════════════
+function switchMode(m) {
+    S.mode = m;
+    $('panelMotion').classList.toggle('hidden', m!=='motion');
+    $('panelVideo').classList.toggle('hidden', m!=='video');
+    $('tabMotion').classList.toggle('active', m==='motion');
+    $('tabVideo').classList.toggle('active', m==='video');
+}
+function vidSub(s) {
+    S.vsub = s;
+    $('i2vBox').classList.toggle('hidden', s!=='i2v');
+    $('vs_t2v').classList.toggle('active', s==='t2v');
+    $('vs_i2v').classList.toggle('active', s==='i2v');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUB-TAB (upload/url)
+// ═══════════════════════════════════════════════════════════════════
+function subTab(pfx, mode) {
+    $(pfx+'_uploadArea').classList.toggle('hidden', mode==='url');
+    $(pfx+'_urlArea').classList.toggle('hidden', mode==='upload');
+    $(pfx+'_upload').classList.toggle('on', mode==='upload');
+    $(pfx+'_url').classList.toggle('on', mode==='url');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════════════════
+function onFile(pfx, ev) {
+    const f = ev.target.files[0]; if (!f) return;
+    const isImg = pfx.includes('img') || pfx.includes('si') || pfx.includes('ei');
+    if (isImg && f.size > 10*1024*1024) { toast('Maks 10MB'); return; }
+    S.files[pfx] = f;
+    if (isImg) {
+        const r = new FileReader();
+        r.onload = e => { const p=$(pfx+'Prev'); p.src=e.target.result; p.classList.remove('hidden'); $(pfx+'PH').classList.add('hidden'); $(pfx+'Clr').classList.remove('hidden'); };
+        r.readAsDataURL(f);
+    } else {
+        const v = $(pfx+'Prev'); v.src = URL.createObjectURL(f); v.classList.remove('hidden'); v.play();
+        $(pfx+'PH').classList.add('hidden'); $(pfx+'Clr').classList.remove('hidden');
+    }
+}
+function clrFile(pfx) {
+    delete S.files[pfx];
+    const inp = $(pfx+'Input'); if(inp) inp.value='';
+    const prev = $(pfx+'Prev'); if(prev){prev.classList.add('hidden');if(prev.tagName==='VIDEO')prev.src='';}
+    const ph = $(pfx+'PH'); if(ph) ph.classList.remove('hidden');
+    const cl = $(pfx+'Clr'); if(cl) cl.classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE UPLOAD → PUBLIC URL (multiple hosts + proxies)
+// ═══════════════════════════════════════════════════════════════════
+function makeCatboxFD(file) {
+    const fd = new FormData(); fd.append('reqtype','fileupload'); fd.append('fileToUpload',file); return fd;
+}
+function makeLitterFD(file) {
+    const fd = new FormData(); fd.append('reqtype','fileupload'); fd.append('time','24h'); fd.append('fileToUpload',file); return fd;
+}
+
+async function fetchWithTimeout(url, opts, ms=60000) {
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), ms);
+    try { const r = await fetch(url, {...opts, signal:ctrl.signal}); clearTimeout(tid); return r; }
+    catch(e) { clearTimeout(tid); throw e; }
+}
+
+async function tryUpload(url, makeFD, file) {
+    const r = await fetchWithTimeout(url, {method:'POST', body:makeFD(file)});
+    if (r.ok) { const t = await r.text(); if (t.trim().startsWith('http')) return t.trim(); }
+    return null;
+}
+
+async function uploadFile(file) {
+    const errors = [];
+    // 1. Catbox direct
+    try { const u = await tryUpload(CATBOX, makeCatboxFD, file); if(u) return u; } catch(e){ errors.push('catbox:'+e.message); }
+    // 2. Catbox via CORS proxies
+    for (const fn of CORS_FN) {
+        try { const u = await tryUpload(fn(CATBOX), makeCatboxFD, file); if(u) return u; } catch(e){ errors.push('catbox-proxy:'+e.message); }
+    }
+    // 3. Litterbox direct
+    try { const u = await tryUpload(LITTER, makeLitterFD, file); if(u) return u; } catch(e){ errors.push('litter:'+e.message); }
+    // 4. Litterbox via CORS proxies
+    for (const fn of CORS_FN) {
+        try { const u = await tryUpload(fn(LITTER), makeLitterFD, file); if(u) return u; } catch(e){ errors.push('litter-proxy:'+e.message); }
+    }
+    console.error('Upload errors:', errors);
+    throw new Error('Gagal upload file ke semua hosting. Periksa koneksi internet atau gunakan tab URL dan paste link publik.');
+}
+
+// Convert file to base64 data URL (for Grok which accepts data URLs)
+function fileToBase64(file) {
+    return new Promise((resolve,reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('Gagal membaca file. Pastikan file tidak rusak.'));
+        r.readAsDataURL(file);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RESOLVE URL from upload zone or URL input
+// ═══════════════════════════════════════════════════════════════════
+async function resolveUrl(pfx, label, opts={}) {
+    // Check URL mode
+    const urlArea = $(pfx+'_urlArea');
+    if (urlArea && !urlArea.classList.contains('hidden')) {
+        const v = $(pfx+'Url').value.trim();
+        if (!v) throw new Error(`Masukkan URL ${label}`);
+        return v;
+    }
+    // Upload mode
+    const f = S.files[pfx];
+    if (!f) throw new Error(`Upload ${label} terlebih dahulu`);
+    // For Grok: use base64 data URL for images (no file hosting needed)
+    if (opts.useBase64 && f.type.startsWith('image/')) {
+        showUp(`Memproses ${label}...`);
+        return await fileToBase64(f);
+    }
+    showUp(`Mengupload ${label}...`);
+    return await uploadFile(f);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GENERATE — calls /api/generate on Vercel serverless
+// ═══════════════════════════════════════════════════════════════════
+async function generate() {
+    S.cx = false;
+    hideErr();
+    setGen(true);
+    try {
+        if (S.mode === 'motion') {
+            await genMotion();
+        } else {
+            await genVideo();
+        }
+    } catch(e) {
+        hideUp(); hideStat();
+        showErr(e.message || 'Terjadi kesalahan');
+        setGen(false);
+    }
+}
+
+// --- Motion Control ---
+async function genMotion() {
+    const prov = getProv('mc');
+
+    // Upload files to get public URLs
+    const imgUrl = await resolveUrl('mc_img','gambar karakter'); setUpBar(35);
+    if(S.cx) return;
+    const vidUrl = await resolveUrl('mc_vid','video referensi'); setUpBar(75);
+    hideUp(); if(S.cx) return;
+
+    showStat('Mengirim ke '+PROV[prov].label+'...','');
+
+    const body = {
+        mode: 'motion',
+        provider: prov,
+        image_url: imgUrl,
+        video_url: vidUrl,
+        prompt: $('mc_prompt').value.trim(),
+        settings: {
+            orientation: $('mc_orient').value,
+            quality: $('mc_qual').value,
+            cfg_scale: parseFloat($('mc_cfg').value),
+        }
+    };
+
+    const res = await serverGenerate(body);
+    S.jobId = res.job_id;
+    S._pollProv = prov;
+    showStat('Task dibuat...', `ID: ${S.jobId}`);
+    startPolling();
+}
+
+// --- Video Generate ---
+async function genVideo() {
+    const prov = getProv('vg');
+    const useBase64 = prov === 'grok';
+
+    const body = {
+        mode: 'video',
+        provider: prov,
+        prompt: $('vg_prompt').value.trim(),
+        negative_prompt: $('vg_neg').value.trim(),
+        settings: {
+            aspect_ratio: $('vg_ar').value,
+            duration: $('vg_dur').value,
+            resolution: $('vg_res').value,
+            quality: $('vg_qual').value,
+        }
+    };
+
+    if (S.vsub === 'i2v') {
+        // Upload start image
+        body.image_url = await resolveUrl('vg_si','start image', {useBase64}); setUpBar(50);
+        if(S.cx) return;
+        // Optional end image (not for Grok)
+        if (prov !== 'grok') {
+            try {
+                const hasEndFile = S.files['vg_ei'];
+                const endUrlArea = $('vg_ei_urlArea');
+                const hasEndUrl = endUrlArea && !endUrlArea.classList.contains('hidden') && $('vg_eiUrl').value.trim();
+                if (hasEndFile || hasEndUrl) {
+                    body.end_image_url = await resolveUrl('vg_ei','end image');
+                }
+            } catch(_){}
+        }
+        setUpBar(80); hideUp();
+    } else {
+        if (!body.prompt) throw new Error('Masukkan prompt untuk Text to Video');
+    }
+    hideUp(); if(S.cx) return;
+
+    showStat('Mengirim ke '+PROV[prov].label+'...','');
+    const res = await serverGenerate(body);
+    S.jobId = res.job_id;
+    S._pollProv = prov;
+    showStat('Task dibuat...', `ID: ${S.jobId}`);
+    startPolling();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SERVER API CALLS
+// ═══════════════════════════════════════════════════════════════════
+async function serverGenerate(body) {
+    const r = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `Server error (${r.status})`);
+    if (!d.job_id) throw new Error('Server tidak mengembalikan job_id');
+    return d;
+}
+
+async function serverStatus(provider, jobId) {
+    const r = await fetch(`/api/status?provider=${encodeURIComponent(provider)}&job_id=${encodeURIComponent(jobId)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `Status error (${r.status})`);
+    return d;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// POLLING — unified polling via /api/status
+// ═══════════════════════════════════════════════════════════════════
+async function startPolling() {
+    if (S.cx || !S.jobId) return;
+    try {
+        const d = await serverStatus(S._pollProv, S.jobId);
+
+        if (d.status === 'done') {
+            if (d.video_url) {
+                showRes(d.video_url);
+            } else {
+                showErr(d.warning || 'Video selesai tapi URL tidak ditemukan');
+                hideStat();
+            }
+            setGen(false);
+            return;
+        }
+
+        if (d.status === 'failed') {
+            showErr(d.error || 'AI gagal memproses video. Coba lagi dengan gambar/video yang berbeda.');
+            hideStat(); setGen(false);
+            return;
+        }
+
+        // Still processing
+        const detail = d.detail || 'Memproses...';
+        const progress = d.progress ? ` ${d.progress}%` : '';
+        showStat(detail + progress, `ID: ${S.jobId}`);
+    } catch(e) {
+        // Network error during poll — keep trying
+        console.warn('Poll error:', e.message);
+    }
+    S.poll = setTimeout(startPolling, 6000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CANCEL
+// ═══════════════════════════════════════════════════════════════════
+function cancel() {
+    S.cx=true; if(S.poll){clearTimeout(S.poll);S.poll=null;} S.jobId=null;
+    hideStat(); hideUp(); hideErr(); setGen(false); toast('Dibatalkan');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function setGen(on) {
+    $('genBtn').disabled=on; $('genTxt').textContent=on?'Memproses...':'Generate';
+    $('cancelBtn').classList.toggle('hidden',!on); $('cancelBtn').classList.toggle('flex',on);
+}
+function showUp(t) { $('upProg').classList.remove('hidden'); $('upTxt').textContent=t; }
+function setUpBar(p) { $('upBar').style.width=p+'%'; }
+function hideUp() { $('upProg').classList.add('hidden'); setUpBar(0); }
+function showStat(t,d) { $('statCard').classList.remove('hidden'); $('statTxt').textContent=t; $('statDet').textContent=d; $('resCard').classList.add('hidden'); }
+function hideStat() { $('statCard').classList.add('hidden'); }
+function showRes(url) {
+    hideStat(); hideErr(); $('resCard').classList.remove('hidden'); $('resVid').src=url; $('dlBtn').href=url;
+    addHist(url);
+}
+function showErr(msg) {
+    $('errCard').classList.remove('hidden');
+    $('errMsg').textContent = msg;
+    // Also set title based on error type
+    if (msg.includes('upload') || msg.includes('Upload')) {
+        $('errTitle').textContent = 'Upload Gagal';
+    } else if (msg.includes('API key') || msg.includes('dikonfigurasi')) {
+        $('errTitle').textContent = 'Konfigurasi Error';
+    } else if (msg.includes('gagal memproses') || msg.includes('AI gagal')) {
+        $('errTitle').textContent = 'AI Error';
+    } else {
+        $('errTitle').textContent = 'Error';
+    }
+}
+function hideErr() { $('errCard').classList.add('hidden'); }
+function toast(m) { const t=$('toastEl'); t.querySelector('.toast-box').textContent=m; t.style.display=''; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',4500); }
+
+// ═══════════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════════
+function addHist(url) {
+    const p = S.mode==='motion' ? getProv('mc') : getProv('vg');
+    S.hist.unshift({url, date:new Date().toISOString(), mode:S.mode, prov:p});
+    if(S.hist.length>30) S.hist.pop();
+    localStorage.setItem('ks3_h',JSON.stringify(S.hist)); renderHist();
+}
+function renderHist() {
+    if(!S.hist.length){$('histSec').classList.add('hidden');return;}
+    $('histSec').classList.remove('hidden');
+    $('histList').innerHTML = S.hist.map((h,i)=>{
+        const d=new Date(h.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+        const m=h.mode==='motion'?'Motion':'Video';
+        const p=PROV[h.prov]?.label||h.prov;
+        return `<div class="card p-3 flex items-center justify-between hover:bg-[#1a1a1a] transition cursor-pointer" onclick="showRes('${h.url}');$('resCard').scrollIntoView({behavior:'smooth'})">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 bg-[#1a1a1a] rounded-md flex items-center justify-center text-[10px] text-[#555]">${i+1}</span>
+                <div><p class="text-xs text-[#aaa]">${m} · ${p}</p><p class="text-[10px] text-[#444]">${d}</p></div>
+            </div>
+            <a href="${h.url}" download class="btn btn-ghost py-1 px-2 text-[10px]" onclick="event.stopPropagation()">Download</a>
+        </div>`;
+    }).join('');
+}
+function clrHist() { S.hist=[]; localStorage.setItem('ks3_h','[]'); renderHist(); }
+</script>
+</body>
+</html>
