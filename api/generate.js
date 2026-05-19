@@ -149,7 +149,7 @@ async function genVideo(provider, key, { image_url, end_image_url, prompt, negat
         throw apiErr(400, 'Masukkan prompt atau upload gambar');
     }
 
-    const ep = settings.quality === 'pro' ? '/v1/ai/video/kling-v3-pro' : '/v1/ai/video/kling-v3-std';
+    const ep = settings.quality === 'pro' ? '/v1/ai/video/kling-v2-6-pro' : '/v1/ai/video/kling-v2-6-std';
     const res = await apiFetch(`${base}${ep}`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.data?.task_id) throw apiErr(502, `${provider} tidak mengembalikan task_id`);
     return { job_id: res.data.task_id, provider };
