@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 // ─── ENV KEYS ───
 const ENV_MAP = {
     freepik: 'FREEPIK_API_KEY',
-    magnific: 'MAGNIFIC_API_KEY',
+    magnific: 'FPSX856276ef34c04893ab322ae54d4c324c',
     kie: 'KIE_API_KEY',
     grok: 'GROK_API_KEY',
 };
