@@ -97,7 +97,7 @@ async function genMotion(provider, key, { image_url, video_url, prompt, settings
     }
 
     // Freepik / Magnific
-    const ep = settings.quality === 'pro' ? '/v1/ai/video/kling-v3-motion-control-pro' : '/v1/ai/video/kling-v3-motion-control-std';
+    const ep = settings.quality === 'pro' ? '/v1/ai/video/kling-v2-6-motion-control-pro' : '/v1/ai/video/kling-v2-6-motion-control-std';
     const body = {
         image_url,
         video_url,
