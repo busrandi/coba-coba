@@ -89,8 +89,8 @@ async function checkStatus(provider, key, job_id) {
 
     // Freepik / Magnific — try both motion control and video endpoints
     const eps = [
-        `/v1/ai/video/kling-v3-motion-control/${job_id}`,
-        `/v1/ai/video/kling-v3/${job_id}`,
+        `/v1/ai/video/kling-v2-6-motion-control/${job_id}`,
+        `/v1/ai/video/kling-v2-6/${job_id}`,
     ];
     let lastErr = null;
     for (const ep of eps) {
